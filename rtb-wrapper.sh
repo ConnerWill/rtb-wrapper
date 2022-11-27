@@ -59,7 +59,7 @@ action=${1?"param 1: action: backup, restore"}
 profile=${2?"param 2: name of the profile"}
 
 # load config
-config_dir=${RTB_CONFIG_DIR:-"${HOME}/.rsync_tmbackup"}
+config_dir="${RTB_CONFIG_DIR:-${XDG_CONFIG_HOME:-${HOME}/.config}/rsync_tmbackup}"
 
 # load profile
 profile_dir="${config_dir}/conf.d"
