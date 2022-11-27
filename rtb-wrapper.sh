@@ -17,15 +17,16 @@ fn_display_usage () {
 
 # create backup cli command
 fn_create_backup_cmd () {
-    cmd="rsync_tmbackup.sh '${SOURCE}' '${TARGET}'"
 
-    exclude_file_check=${EXCLUDE_FILE:-}
+  cmd="rsync_tmbackup.sh '${SOURCE}' '${TARGET}'"
 
-    if [ ! -z "${exclude_file_check}" ]; then
-        cmd="${cmd} '${EXCLUDE_FILE}'"
-    fi
+  exclude_file_check=${EXCLUDE_FILE:-}
 
-    echo "$cmd"
+  if [ -n "${exclude_file_check}" ]; then
+    cmd="${cmd} '${EXCLUDE_FILE}'"
+  fi
+
+  echo "$cmd"
 }
 
 # create restore cli command
@@ -33,7 +34,7 @@ fn_create_restore_cmd () {
     cmd="rsync -aP"
 
     if [ "${WIPE_SOURCE_ON_RESTORE:-'false'}" = "true" ]; then
-        cmd="${cmd} --delete"
+      cmd="${cmd} --delete"
     fi
 
     cmd="${cmd} '${TARGET}/latest/' '${SOURCE}/'"
@@ -42,17 +43,17 @@ fn_create_restore_cmd () {
 }
 
 fn_abort_if_crlf () {
-    if ! awk '/\r$/ { exit(1) }' "$1"; then
-        echo " [!] The profile has at least one Windows-style line ending"
-        echo "     ERROR: failed to read the profile file: ${profile_file}" > /dev/stderr
-        exit 1
-    fi
+  if ! awk '/\r$/ { exit(1) }' "$1"; then
+    echo " [!] The profile has at least one Windows-style line ending"
+    echo "     ERROR: failed to read the profile file: ${profile_file}" > /dev/stderr
+    exit 1
+  fi
 }
 
 # show help when invoked without parameters
 if [ $# -eq 0 ]; then
-    fn_display_usage
-    exit 0
+  fn_display_usage
+  exit 0
 fi
 
 action=${1?"param 1: action: backup, restore"}
@@ -67,25 +68,34 @@ profile_file="${profile_dir}/${profile}.inc"
 exclude_file_convention="${profile_dir}/${profile}.excludes.lst"
 
 if [ -r "$profile_file" ]; then
-    # preset exclude file path before reading the profile
-    if [ -r "$exclude_file_convention" ]; then
-        EXCLUDE_FILE="$exclude_file_convention"
-    fi
+  # preset exclude file path before reading the profile
+  if [ -r "$exclude_file_convention" ]; then
+    EXCLUDE_FILE="$exclude_file_convention"
+  fi
 
-    # sanity check, crlf can break variable substitution
-    fn_abort_if_crlf "$profile_file"
-    # shellcheck disable=SC1090,SC1091
-    . "$profile_file"
-    # create cli command
-    if [ "$action" = "restore" ]; then
-        cmd=$(fn_create_restore_cmd)
-    else
-        cmd=$(fn_create_backup_cmd)
-    fi
+  # sanity check, crlf can break variable substitution
+  fn_abort_if_crlf "$profile_file"
+  # shellcheck disable=SC1090,SC1091
+  . "$profile_file"
 
-    #echo "# ${cmd}"
-    eval "$cmd"
-else
-    echo "Failed to read the profile file: ${profile_file}" > /dev/stderr
+  # Check if command is found
+  rsync_tmbackup_cmd="rsync_tmbackup.sh"
+  rsync_tmbackup_path=$(command -v "${rsync_tmbackup_cmd}" 2>/dev/null)
+  if [ ! "${rsync_tmbackup_path}" ]; then
+    printf "Cannot find command:\t%s" "${rsync_tmbackup_cmd}"
     exit 1
+  fi
+
+  # create cli command
+  if [ "$action" = "restore" ]; then
+    cmd=$(fn_create_restore_cmd)
+  else
+    cmd=$(fn_create_backup_cmd)
+  fi
+
+  #echo "# ${cmd}"
+  eval "$cmd"
+else
+  echo "Failed to read the profile file: ${profile_file}" > /dev/stderr
+  exit 1
 fi
